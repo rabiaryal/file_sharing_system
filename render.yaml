@@ -1,16 +1,23 @@
 services:
   - type: web
     name: file-sharing-api
-    runtime: python311
+    runtime: python         # FIXED: Changed from python311
     buildCommand: ./build.sh
     startCommand: gunicorn core.wsgi:application --bind 0.0.0.0:$PORT --workers 4 --worker-class sync --timeout 120
     envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.10       # FIXED: Set Python version here
       - key: DEBUG
         value: 'false'
       - key: SECRET_KEY
         generateValue: true
       - key: ALLOWED_HOSTS
-        value: '*.render.com'
+        value: '*.render.com, api.share-file.rabiaryal.com.np' # Added your custom domain
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: file-sharing-redis
+          property: connectionString
       - key: SUPABASE_CONNECTION_STRING
         sync: false
       - key: SUPABASE_HOST
@@ -28,10 +35,8 @@ services:
       - key: SUPABASE_KEY
         sync: false
 
-  - type: pserv
+  # FIXED: Converted to a clean, managed Render Redis resource instance
+  - type: redis
     name: file-sharing-redis
-    runtime: redis7
-    disk:
-      name: redis_data
-      mountPath: /var/lib/redis
-      sizeGB: 1
+    plan: free # Uses Render's free tier cache engine
+    ipAllowList: [] # Allows internal services like your web API to connect safely
