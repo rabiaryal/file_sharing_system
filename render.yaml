@@ -29,7 +29,6 @@ services:
       mountPath: /var/lib/redis
       sizeGB: 1
 
-databases:
-  - name: file_sharing_db
-    engine: postgres
-    version: '16'
+  - type: postgres
+    name: file_sharing_db
+    ipWhitelist: []
