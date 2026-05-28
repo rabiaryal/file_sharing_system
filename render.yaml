@@ -1,0 +1,38 @@
+services:
+  - type: web
+    name: file-sharing-api
+    runtime: python
+    runtimeVersion: 3.11
+    buildCommand: ./build.sh
+    startCommand: gunicorn core.wsgi:application --bind 0.0.0.0:$PORT --workers 4 --worker-class sync --timeout 120
+    envVars:
+      - key: DEBUG
+        value: false
+      - key: SECRET_KEY
+        generateValue: true
+      - key: ALLOWED_HOSTS
+        value: "*.render.com,yourdomain.com"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: file_sharing_db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          name: file-sharing-redis
+          type: pserv
+          property: connectionString
+
+  - type: pserv
+    name: file-sharing-redis
+    runtime: redis
+    runtimeVersion: 7
+    disk:
+      name: redis_data
+      mountPath: /var/lib/redis
+      sizeGB: 1
+
+databases:
+  - name: file_sharing_db
+    engine: postgres
+    ipWhitelist: []
+    postgresMajorVersion: 16
