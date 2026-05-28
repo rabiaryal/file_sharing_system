@@ -252,6 +252,12 @@ TRUSTED_PROXIES = ["nginx", "127.0.0.1", "0.0.0.0"]
 
 # Database connection pooling with PgBouncer
 DATABASES["default"]["CONN_MAX_AGE"] = 600
+
+# 1. Ensure the 'OPTIONS' dictionary safely exists first
+if "OPTIONS" not in DATABASES["default"]:
+    DATABASES["default"]["OPTIONS"] = {}
+
+# 2. Now it is safe to set your connection timeout limit!
 DATABASES["default"]["OPTIONS"]["connect_timeout"] = 10
 
 # Google OAuth Configuration
