@@ -11,6 +11,10 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.getenv("SECRET_KEY", "django-insecure-change-me")
 DEBUG = os.getenv("DEBUG", "0") == "1"
 
+# Detect if running on Render production vs local development
+# On Render, DEBUG will be set to the string "false" (lowercase)
+IS_PRODUCTION = os.getenv("DEBUG", "1") == "false"
+
 allowed_hosts = os.getenv("ALLOWED_HOSTS", "localhost,127.0.0.1,0.0.0.0")
 ALLOWED_HOSTS = [host.strip() for host in allowed_hosts.split(",") if host.strip()]
 
@@ -174,9 +178,28 @@ SIMPLE_JWT = {
     "BLACKLIST_AFTER_ROTATION": True,
 }
 
-# Celery/Redis settings
-CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL", "redis://redis:6379/0")
-CELERY_RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND", "redis://redis:6379/0")
+# =====================================================================
+# CELERY CONFIGURATION: Dynamic Production/Local Setup
+# =====================================================================
+if IS_PRODUCTION:
+    # =====================================================================
+    # RENDER FREE TIER CONFIGURATION (ZERO-COST / ZERO-SERVER WORKAROUND)
+    # =====================================================================
+    # Forces Celery to execute tasks instantly in the main thread.
+    # No Redis broker server or separate worker containers required.
+    CELERY_TASK_ALWAYS_EAGER = True
+    CELERY_TASK_EAGER_PROPAGATES = True
+    
+    # Render routes logs straight to your dashboard panel
+    CELERY_LOG_LEVEL = 'info'
+
+else:
+    # =====================================================================
+    # LOCAL DEVELOPMENT CONFIGURATION (DOCKER / LOCAL REDIS)
+    # =====================================================================
+    # Standard asynchronous setup utilizing your local spinning Redis node
+    CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL", "redis://redis:6379/0")
+    CELERY_RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND", "redis://redis:6379/0")
 
 # Django cache via redis (for rate limiting / counters)
 CACHES = {
