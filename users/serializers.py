@@ -89,20 +89,25 @@ class GoogleLoginSerializer(serializers.Serializer):
     token = serializers.CharField()
 
     def validate_token(self, value):
+        from django.conf import settings
+        from google.auth.transport import requests
+        from google.oauth2 import id_token
+        
+        google_client_id = getattr(settings, 'GOOGLE_CLIENT_ID', None)
+        if not google_client_id:
+            raise serializers.ValidationError("Google client ID not configured in Django settings")
+        
         try:
-            from google.auth.transport import requests
-            from google.oauth2 import id_token
-            import os
-            
-            google_client_id = os.getenv('GOOGLE_CLIENT_ID')
-            if not google_client_id:
-                raise serializers.ValidationError("Google client ID not configured")
-            
-            # Verify the token
-            idinfo = id_token.verify_oauth2_token(value, requests.Request(), google_client_id)
+            # Verify the token with a 5-minute clock skew tolerance to prevent clock drift issues
+            idinfo = id_token.verify_oauth2_token(
+                value, 
+                requests.Request(), 
+                google_client_id,
+                clock_skew_in_seconds=300
+            )
             
             # Token is valid, store it for later use
             self.context['idinfo'] = idinfo
             return value
-        except Exception as e:
+        except ValueError as e:
             raise serializers.ValidationError(f"Invalid Google token: {str(e)}")

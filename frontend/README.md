@@ -27,7 +27,8 @@ A modern React frontend for the PDF Sharing Platform with Google OAuth authentic
 4. Create OAuth 2.0 credentials (Web application)
 5. Add `http://localhost:3000` to Authorized JavaScript origins
 6. Add `http://localhost:3000` to Authorized redirect URIs
-7. Copy your **Client ID**
+7. Add your production frontend origin, for example `https://share-file.rabi-aryal.com.np`, to Authorized JavaScript origins. This app uses the popup-based `@react-oauth/google` flow, so the browser origin of the frontend must match exactly.
+8. Copy your **Client ID**
 
 ### 2. Environment Configuration
 
@@ -37,6 +38,8 @@ Create a `.env` file in the `frontend/` directory:
 VITE_GOOGLE_CLIENT_ID=your_google_client_id_here
 VITE_API_URL=http://localhost:8000
 ```
+
+For production on Vercel, set `VITE_API_URL` to your Render backend URL, for example `https://file-sharing-api-latest-r939.onrender.com`, and redeploy so Vite bakes the value into the client bundle.
 
 ### 3. Install Dependencies
 

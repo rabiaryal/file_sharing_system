@@ -41,9 +41,11 @@ const SharePage: React.FC = () => {
         if (!token) return;
         try {
             setDownloading(true);
-            // Get the API base URL and construct full download URL
-            const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-            const downloadUrl = `${apiUrl}/api/files/share/${token}/`;
+            // Same-origin by default; fallback keeps cross-domain deployments configurable.
+            const apiUrl = (import.meta.env.VITE_API_URL || '').replace(/\/+$/, '');
+            const downloadUrl = apiUrl
+                ? `${apiUrl}/api/files/share/${token}/`
+                : `/api/files/share/${token}/`;
             window.location.href = downloadUrl;
         } catch (err) {
             setError('Failed to download file');

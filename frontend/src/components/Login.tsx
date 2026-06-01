@@ -8,9 +8,14 @@ const Login: React.FC = () => {
     const handleGoogleSuccess = async (credentialResponse: any) => {
         try {
             await login(credentialResponse.credential);
-        } catch (error) {
+        } catch (error: any) {
             console.error('Login failed:', error);
-            alert('Login failed. Please try again.');
+            const errorMsg = error.response?.data?.token?.[0] || 
+                             error.response?.data?.message || 
+                             error.response?.data?.detail || 
+                             error.message || 
+                             'Please try again.';
+            alert(`Login failed: ${errorMsg}`);
         }
     };
 

@@ -15,7 +15,10 @@ DEBUG = os.getenv("DEBUG", "0") == "1"
 # On Render, DEBUG will be set to the string "false" (lowercase)
 IS_PRODUCTION = os.getenv("DEBUG", "1") == "false"
 
-allowed_hosts = os.getenv("ALLOWED_HOSTS", "localhost,127.0.0.1,0.0.0.0")
+allowed_hosts = os.getenv(
+    "ALLOWED_HOSTS",
+    "localhost,127.0.0.1,0.0.0.0,file-sharing-api-latest-r939.onrender.com,share-file.rabiaryal.com.np,www.share-file.rabiaryal.com.np",
+)
 ALLOWED_HOSTS = [host.strip() for host in allowed_hosts.split(",") if host.strip()]
 
 INSTALLED_APPS = [
@@ -169,6 +172,7 @@ REST_FRAMEWORK = {
         "rest_framework.permissions.IsAuthenticated",
     ),
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+    "EXCEPTION_HANDLER": "core.exception_handler.global_api_exception_handler",
 }
 
 SIMPLE_JWT = {
@@ -240,25 +244,39 @@ MEDIA_ROOT = BASE_DIR / "media"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # CORS Configuration
-cors_origins = os.getenv("CORS_ALLOWED_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000,http://localhost,http://127.0.0.1")
+cors_origins = os.getenv(
+    "CORS_ALLOWED_ORIGINS",
+    "https://share-file.rabiaryal.com.np,https://www.share-file.rabiaryal.com.np,http://localhost:3000,http://localhost:5173,http://127.0.0.1:3000,http://localhost,http://127.0.0.1",
+)
 CORS_ALLOWED_ORIGINS = [origin.strip() for origin in cors_origins.split(",") if origin.strip()]
 
 CORS_ALLOW_CREDENTIALS = True
+
+csrf_trusted_origins = os.getenv(
+    "CSRF_TRUSTED_ORIGINS",
+    "https://share-file.rabiaryal.com.np,https://www.share-file.rabiaryal.com.np,https://file-sharing-api-latest-r939.onrender.com",
+)
+CSRF_TRUSTED_ORIGINS = [origin.strip() for origin in csrf_trusted_origins.split(",") if origin.strip()]
 
 # Nginx/Proxy settings for production
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 USE_X_FORWARDED_HOST = True
 TRUSTED_PROXIES = ["nginx", "127.0.0.1", "0.0.0.0"]
 
+# Build absolute URLs with HTTPS behind reverse proxies/CDNs.
+ACCOUNT_DEFAULT_HTTP_PROTOCOL = os.getenv("ACCOUNT_DEFAULT_HTTP_PROTOCOL", "https")
+SOCIAL_AUTH_REDIRECT_IS_HTTPS = os.getenv("SOCIAL_AUTH_REDIRECT_IS_HTTPS", "1") == "1"
+# Keep redirect disabled when TLS is terminated by Cloudflare/Render.
+SECURE_SSL_REDIRECT = os.getenv("SECURE_SSL_REDIRECT", "0") == "1"
+
 # Database connection pooling with PgBouncer
 DATABASES["default"]["CONN_MAX_AGE"] = 600
 
-# 1. Ensure the 'OPTIONS' dictionary safely exists first
-if "OPTIONS" not in DATABASES["default"]:
-    DATABASES["default"]["OPTIONS"] = {}
-
-# 2. Now it is safe to set your connection timeout limit!
-DATABASES["default"]["OPTIONS"]["connect_timeout"] = 10
+# Only PostgreSQL accepts connect_timeout; SQLite will crash if it sees it.
+if DATABASES["default"]["ENGINE"] == "django.db.backends.postgresql":
+    if "OPTIONS" not in DATABASES["default"]:
+        DATABASES["default"]["OPTIONS"] = {}
+    DATABASES["default"]["OPTIONS"]["connect_timeout"] = 10
 
 # Google OAuth Configuration
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "")

@@ -45,9 +45,12 @@ A complete, production-ready file-sharing platform with React frontend, Django b
 5. Add authorized origins:
    - `http://localhost:3000`
    - `http://localhost:8000`
+  - `https://share-file.rabi-aryal.com.np`  
+    Use your deployed frontend origin here. For the popup-based `@react-oauth/google` flow, this exact frontend origin must be listed in Authorized JavaScript origins. If you deploy to Vercel preview URLs, those preview origins must also be added or the login will fail with origin mismatch.
 6. Add authorized redirect URIs:
    - `http://localhost:3000`
    - `http://localhost:8000/api/auth/google/`
+  - `https://share-file.rabi-aryal.com.np`
 7. Copy your **Client ID** (looks like: `xxxxx.apps.googleusercontent.com`)
 
 ### Step 2: Configure Environment Variables
@@ -73,6 +76,8 @@ Update `frontend/.env` file:
 VITE_GOOGLE_CLIENT_ID=your_google_client_id_here
 VITE_API_URL=http://localhost:8000
 ```
+
+For the Vercel production deployment, set `VITE_API_URL` to your Render backend domain, such as `https://file-sharing-api-latest-r939.onrender.com`, then trigger a new frontend deployment.
 
 ### Step 3: Start the Application
 

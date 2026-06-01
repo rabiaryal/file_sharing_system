@@ -69,7 +69,7 @@ class MeView(APIView):
     permission_classes = [IsAuthenticated]
     @extend_schema(responses=UserSerializer)
     def get(self, request):
-        return Response(UserSerializer(request.user).data, status=status.HTTP_200_OK)
+        return Response({"user": UserSerializer(request.user).data}, status=status.HTTP_200_OK)
 
     @extend_schema(request=ProfileUpdateSerializer, responses=UserSerializer)
     def patch(self, request):
@@ -104,12 +104,13 @@ class GoogleLoginView(APIView):
                 'is_email_verified': True,  # Google verified email
             }
         )
-        
-        # Update names if they were created
-        if created:
+
+        if not created:
+            # Keep existing accounts in sync with Google profile data.
             user.first_name = first_name
             user.last_name = last_name
-            user.save()
+            user.is_email_verified = True
+            user.save(update_fields=['first_name', 'last_name', 'is_email_verified'])
         
         response = Response(
             {
