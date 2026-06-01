@@ -37,8 +37,8 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
-    "django.middleware.security.SecurityMiddleware",
     "corsheaders.middleware.CorsMiddleware",
+    "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -185,32 +185,37 @@ SIMPLE_JWT = {
 # =====================================================================
 # CELERY CONFIGURATION: Dynamic Production/Local Setup
 # =====================================================================
-if IS_PRODUCTION:
-    # =====================================================================
-    # RENDER FREE TIER CONFIGURATION (ZERO-COST / ZERO-SERVER WORKAROUND)
-    # =====================================================================
-    # Forces Celery to execute tasks instantly in the main thread.
-    # No Redis broker server or separate worker containers required.
-    CELERY_TASK_ALWAYS_EAGER = True
-    CELERY_TASK_EAGER_PROPAGATES = True
+# =====================================================================
+# CELERY CONFIGURATION
+# =====================================================================
+CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL", "redis://localhost:6379/0")
+CELERY_RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND", "redis://localhost:6379/0")
+CELERY_LOG_LEVEL = 'info'
+
+# SSL fix for Upstash rediss:// connections
+if CELERY_BROKER_URL.startswith("rediss://"):
+    CELERY_BROKER_TRANSPORT_OPTIONS = {
+        "connection_class": "redis.SSLConnection",
+    }
+    CELERY_REDIS_BACKEND_USE_SSL = {
+        "ssl_cert_reqs": None
+    }
     
-    # Render routes logs straight to your dashboard panel
-    CELERY_LOG_LEVEL = 'info'
-
-else:
-    # =====================================================================
-    # LOCAL DEVELOPMENT CONFIGURATION (DOCKER / LOCAL REDIS)
-    # =====================================================================
-    # Standard asynchronous setup utilizing your local spinning Redis node
-    CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL", "redis://redis:6379/0")
-    CELERY_RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND", "redis://redis:6379/0")
-
-# Django cache via redis (for rate limiting / counters)
+# Django cache via Redis (supports local Redis and Upstash TLS)
+_REDIS_URL = os.getenv("REDIS_URL", "redis://redis:6379/1")
 CACHES = {
     "default": {
         "BACKEND": "django_redis.cache.RedisCache",
-        "LOCATION": os.getenv("REDIS_URL", "redis://redis:6379/1"),
-        "OPTIONS": {"CLIENT_CLASS": "django_redis.client.DefaultClient"},
+        "LOCATION": _REDIS_URL,
+        "OPTIONS": {
+            "CLIENT_CLASS": "django_redis.client.DefaultClient",
+            # ⚠️ Required for Upstash: disable SSL cert verification on rediss:// connections
+            **(
+                {"CONNECTION_POOL_KWARGS": {"ssl_cert_reqs": None}}
+                if _REDIS_URL.startswith("rediss://")
+                else {}
+            ),
+        },
     }
 }
 

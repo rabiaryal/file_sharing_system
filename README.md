@@ -1,5 +1,13 @@
 # 📄 PDF Sharing Platform
 
+
+ ### to build 
+ docker buildx build --platform linux/amd64 -t rabiaryal/file-sharing-api:latest --push .
+
+ ### to find out what are the things that has been pushed into the docker hub 
+ docker run --rm --platform linux/amd64 rabiaryal/file-sharing-api:latest ls /app
+
+ 
 A modern, production-ready file-sharing platform built with **React**, **Django**, **PostgreSQL**, and **Supabase**. Share PDFs securely with encrypted links, QR codes, and download limits.
 
 ## 🌟 Key Features
