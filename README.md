@@ -12,7 +12,6 @@ A modern, production-ready file-sharing platform built with **React**, **Django*
 
 
  ####  To test it , go to this link , share-file.rabiaryal.com.np
-
 ## 🌟 Key Features
 
 ### 🔐 Security & Authentication
@@ -517,3 +516,43 @@ For issues and questions:
 **Made with ❤️ for secure file sharing**
 
 [⬆ Back to top](#-pdf-sharing-platform)
+
+
+
+/l things to do and learn about the aws
+
+**Practical project using your existing backend:**
+
+**Phase 1 — Deploy your current project on AWS**
+- Move Django from Render → EC2
+- Move PostgreSQL from Supabase → RDS
+- Move file storage from Supabase → S3
+- Put Nginx on EC2 as reverse proxy
+
+**Phase 2 — Add AWS-specific features**
+- Use **SES** for email notifications when file is shared
+- Use **CloudFront** in front of S3 for faster file delivery
+- Use **Lambda** to trigger `self_destruct_task` instead of Celery
+
+**Phase 3 — Monitoring**
+- Set up **CloudWatch** for logs and alerts
+- Replace your MongoDB logging with CloudWatch logs
+
+---
+
+**Where to learn for free:**
+
+- **AWS Skill Builder** — free official courses at skillbuilder.aws
+- **freeCodeCamp YouTube** — full AWS courses free
+- **AWS documentation** — actually well written, better than most tutorials
+- **AWS Workshop Studio** — free hands-on labs at workshops.aws
+
+---
+
+**What to build on your CV from this:**
+
+- Migrated file sharing platform from Render/Supabase to AWS (EC2, RDS, S3, CloudFront)
+- Implemented serverless file cleanup using AWS Lambda
+- Configured CloudWatch monitoring and alerting
+
+That's stronger than any certificate on a fresher CV.

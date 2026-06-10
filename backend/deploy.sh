@@ -117,10 +117,6 @@ deploy_full() {
         sleep 2
     done
     
-    # Start Celery worker
-    log_info "Starting Celery worker..."
-    docker-compose up -d celery_worker
-    
     # Start frontend
     log_info "Starting frontend..."
     docker-compose up -d frontend
@@ -148,7 +144,7 @@ start_services() {
     docker-compose up -d redis pgbouncer
     sleep 3
     
-    docker-compose up -d web celery_worker
+    docker-compose up -d web
     sleep 3
     
     docker-compose up -d frontend nginx
@@ -205,7 +201,6 @@ view_logs() {
         4) docker-compose logs -f pgbouncer ;;
         5) docker-compose logs -f db ;;
         6) docker-compose logs -f redis ;;
-        7) docker-compose logs -f celery_worker ;;
         8) docker-compose logs -f frontend ;;
         9) return ;;
         *) log_error "Invalid choice" ;;

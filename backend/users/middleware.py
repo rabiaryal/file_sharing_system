@@ -1,13 +1,14 @@
 """JWT cookie middleware for request authentication and token rotation."""
 
+import structlog
 from django.contrib.auth import get_user_model
 from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
 from rest_framework_simplejwt.tokens import AccessToken, RefreshToken
 
 from .services import build_tokens_for_user, get_access_token, get_refresh_token, set_token_cookies
 
-
 User = get_user_model()
+log = structlog.get_logger(__name__)
 
 
 class JWTAuthenticationMiddleware:
@@ -48,8 +49,12 @@ class JWTAuthenticationMiddleware:
             user = User.objects.get(pk=user_id)
             if user.is_active:
                 return user
-        except (InvalidToken, TokenError, KeyError, User.DoesNotExist):
-            return None
+        except (InvalidToken, TokenError):
+            log.warning("access_token_invalid", reason="token_error")
+        except User.DoesNotExist:
+            log.warning("access_token_invalid", reason="user_not_found")
+        except KeyError:
+            log.warning("access_token_invalid", reason="missing_user_id_claim")
         return None
 
     def _user_from_refresh_token(self, request, refresh_token):
@@ -58,8 +63,15 @@ class JWTAuthenticationMiddleware:
             user_id = token["user_id"]
             user = User.objects.get(pk=user_id)
             if not user.is_active:
+                log.warning("refresh_token_rejected", reason="user_inactive", user_id=user_id)
                 return None
             request.jwt_tokens = build_tokens_for_user(user)
+            log.info("token_rotated", user_id=user.id)
             return user
-        except (InvalidToken, TokenError, KeyError, User.DoesNotExist):
-            return None
+        except (InvalidToken, TokenError):
+            log.warning("refresh_token_invalid", reason="token_error")
+        except User.DoesNotExist:
+            log.warning("refresh_token_invalid", reason="user_not_found")
+        except KeyError:
+            log.warning("refresh_token_invalid", reason="missing_user_id_claim")
+        return None

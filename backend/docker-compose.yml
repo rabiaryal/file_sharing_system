@@ -4,9 +4,9 @@ services:
     restart: unless-stopped
     env_file:
       - .env
-    command: sh -c "python manage.py migrate --noinput && gunicorn core.wsgi:application --bind 0.0.0.0:8000 --workers 4 --worker-class sync --timeout 120"
+    command: sh -c "python manage.py migrate --noinput && gunicorn core.wsgi:application --bind 0.0.0.0:8000 --workers 2 --threads 2 --timeout 120"
     ports:
-      - "8000:8000"    # expose directly now
+      - "8000:8000"
     depends_on:
       - redis
     networks:
@@ -17,20 +17,6 @@ services:
     restart: unless-stopped
     networks:
       - app_network
-
-  celery_worker:
-    build: .
-    restart: unless-stopped
-    env_file:
-      - .env
-    command: celery -A core worker --loglevel=info
-    depends_on:
-      - redis
-    networks:
-      - app_network
-
-# remove nginx service entirely
-# remove staticfiles/media volume mounts (Render handles static via whitenoise or S3)
 
 networks:
   app_network:

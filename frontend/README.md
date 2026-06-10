@@ -63,7 +63,7 @@ npm run build
 ```
 
 ## Project Structure
-
+a
 ```
 frontend/
 ├── public/              # Static assets

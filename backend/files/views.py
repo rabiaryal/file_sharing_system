@@ -12,7 +12,10 @@ from .models import CompressedPDF, ShareLink
 from .secure_links import SimpleLinkEngine
 from django.utils import timezone
 import os
+import structlog
 from datetime import timedelta
+
+log = structlog.get_logger(__name__)
 
 
 class PublicLinkBurstThrottle(AnonRateThrottle):
@@ -28,6 +31,7 @@ class UploadIntentView(APIView):
     permission_classes = [permissions.IsAuthenticated]
     @extend_schema(request=UploadIntentSerializer, responses=200)
     def post(self, request):
+        log.info("upload_intent_requested", user_id=request.user.id)
         serializer = UploadIntentSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         filename = serializer.validated_data["filename"]
@@ -37,10 +41,12 @@ class UploadIntentView(APIView):
         total = CompressedPDF.objects.filter(user=request.user).aggregate(total=models.Sum("compressed_size"))
         used = total.get("total") or 0
         if used + size > 1_000_000_000:  # 1GB
+            log.warning("storage_limit_exceeded", user_id=request.user.id, used=used, requested=size)
             return Response({"detail": "User storage limit exceeded"}, status=status.HTTP_403_FORBIDDEN)
 
         path = f"raw/{request.user.id}/{int(timezone.now().timestamp())}_{filename}"
         presigned = make_presigned_upload(path)
+        log.info("upload_intent_created", user_id=request.user.id, path=path, filename=filename, size=size)
         return Response(
             {
                 "storage_path": path,
@@ -54,6 +60,7 @@ class ProcessView(APIView):
     permission_classes = [permissions.IsAuthenticated]
     @extend_schema(request=ProcessSerializer, responses=201)
     def post(self, request):
+        log.info("process_view_called", user_id=request.user.id)
         serializer = ProcessSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         storage_path = serializer.validated_data["storage_path"]
@@ -66,12 +73,11 @@ class ProcessView(APIView):
             original_name=original_name,
             storage_path=storage_path,
             original_size=original_size,
-            status="PROCESSING",
+            compressed_size=original_size,
+            status="COMPLETED",
         )
 
-        # enqueue Celery task
-        from .tasks import compress_pdf_task
-        compress_pdf_task.delay(record.id)
+        log.info("pdf_record_created", record_id=record.id, user_id=request.user.id, original_name=original_name)
 
         # create share link metadata (without token - token is generated on-demand)
         share_link = ShareLink.objects.create(
@@ -81,6 +87,8 @@ class ProcessView(APIView):
 
         # Generate stateless HMAC-based token using file_id and expiry
         token = SimpleLinkEngine.generate_token(record.id, execution_window_seconds=expires_in)
+
+        log.info("share_link_created", record_id=record.id, expires_in=expires_in)
 
         return Response(
             {
@@ -94,21 +102,26 @@ class ProcessView(APIView):
 
 class ShareLinkInfoView(APIView):
     permission_classes = [permissions.AllowAny]
-    
+
     @extend_schema(responses={200: {'properties': {'filename': {'type': 'string'}, 'expires_at': {'type': 'string'}, 'size': {'type': 'integer'}, 'expired': {'type': 'boolean'}}, 'type': 'object'}})
     def get(self, request, token):
+        log.info("share_link_info_requested", token=token)
         # Middleware already verified the token and extracted file_id
         file_id = getattr(request, 'verified_file_id', None)
-        
+
         if file_id is None:
             # This shouldn't happen if middleware is configured correctly
+            log.warning("share_link_verification_failed", token=token)
             return Response({"detail": "Invalid or expired link."}, status=status.HTTP_403_FORBIDDEN)
-        
+
         try:
             pdf_record = CompressedPDF.objects.get(id=file_id)
         except CompressedPDF.DoesNotExist:
+            log.error("pdf_record_not_found", file_id=file_id, token=token)
             return Response({"detail": "File not found."}, status=status.HTTP_404_NOT_FOUND)
-        
+
+        log.info("share_link_info_retrieved", file_id=file_id, filename=pdf_record.original_name)
+
         return Response(
             {
                 "token": token,
@@ -126,25 +139,31 @@ class SecureDownloadGatewayView(APIView):
 
     @extend_schema(exclude=True)
     def get(self, request, token):
+        log.info("secure_download_requested", token=token)
         # Middleware already verified the token and extracted file_id
         file_id = getattr(request, 'verified_file_id', None)
-        
+
         if file_id is None:
             # This shouldn't happen if middleware is configured correctly
+            log.warning("download_verification_failed", token=token)
             return render(request, "expired.html", {"error": "Invalid or expired link."}, status=403)
-        
+
         try:
             pdf = CompressedPDF.objects.get(id=file_id)
         except CompressedPDF.DoesNotExist:
+            log.error("download_pdf_not_found", file_id=file_id, token=token)
             return render(request, "expired.html", {"error": "File not found."}, status=404)
 
         # Determine which version of the file to serve (compressed or original)
         active_path = _resolve_active_path(pdf)
-        
+
         # Generate a presigned download URL from Supabase (valid for 60 seconds)
         signed_url = make_presigned_download(active_path, expires_in=60)
         if not signed_url:
+            log.error("presigned_url_generation_failed", file_id=file_id, active_path=active_path)
             return render(request, "expired.html", {"error": "Secure download link generation failed."}, status=500)
+
+        log.info("download_redirecting", file_id=file_id, active_path=active_path)
 
         # Redirect to presigned URL - browser downloads directly from Supabase
         return redirect(signed_url)

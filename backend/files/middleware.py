@@ -4,9 +4,12 @@ This gatekeeper pattern ensures expired or tampered tokens are rejected
 at the middleware layer before expensive view operations occur.
 """
 
+import structlog
 from django.http import JsonResponse
 from django.utils.deprecation import MiddlewareMixin
 from .secure_links import SimpleLinkEngine
+
+log = structlog.get_logger(__name__)
 
 
 class SecureTokenMiddleware(MiddlewareMixin):
@@ -17,28 +20,27 @@ class SecureTokenMiddleware(MiddlewareMixin):
     """
 
     def process_view(self, request, view_func, view_args, view_kwargs):
-        """
-        Called before the view function executes.
-        Intercepts routes containing our custom 'token' parameter.
-        """
-        # Only process routes that have a 'token' parameter
-        if 'token' in view_kwargs:
-            token = view_kwargs['token']
+        if 'token' not in view_kwargs:
+            return None
 
-            # Run the cryptographic verification
-            file_id = SimpleLinkEngine.verify_token(token)
+        token = view_kwargs['token']
+        file_id = SimpleLinkEngine.verify_token(token)
 
-            if file_id is None:
-                # Token is invalid, expired, or tampered with
-                return JsonResponse(
-                    {
-                        "error": "Link Invalid or Expired",
-                        "detail": "This link has either been modified or its access window has closed.",
-                    },
-                    status=403,
-                )
+        if file_id is None:
+            log.warning(
+                "secure_token_rejected",
+                path=request.path,
+                method=request.method,
+                ip=request.META.get("HTTP_X_FORWARDED_FOR") or request.META.get("REMOTE_ADDR"),
+            )
+            return JsonResponse(
+                {
+                    "error": "Link Invalid or Expired",
+                    "detail": "This link has either been modified or its access window has closed.",
+                },
+                status=403,
+            )
 
-            # Token is valid! Store the verified file_id for the view to use
-            request.verified_file_id = file_id
-
+        log.info("secure_token_accepted", file_id=file_id, path=request.path)
+        request.verified_file_id = file_id
         return None

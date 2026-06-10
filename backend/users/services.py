@@ -3,13 +3,16 @@
 from django.conf import settings
 from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework_simplejwt.tokens import RefreshToken
+import structlog
 
+log = structlog.get_logger(__name__)
 
 ACCESS_COOKIE_NAME = "access_token"
 REFRESH_COOKIE_NAME = "refresh_token"
 
 
 def build_tokens_for_user(user):
+    log.info("tokens_built", user_id=user.id)
     refresh = RefreshToken.for_user(user)
     return {
         "access": str(refresh.access_token),
@@ -62,5 +65,7 @@ def blacklist_refresh_token(refresh_token: str) -> None:
     try:
         token = RefreshToken(refresh_token)
         token.blacklist()
-    except TokenError:
+        log.info("token_blacklisted")
+    except TokenError as e:
+        log.warning("token_blacklist_failed", error=str(e))
         return
