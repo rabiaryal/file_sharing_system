@@ -1,54 +1,62 @@
 # 📄 PDF Sharing Platform
 
 
- <!-- ### to build 
- docker buildx build --platform linux/amd64 -t rabiaryal/file-sharing-api:latest --push .
-
- ### to find out what are the things that has been pushed into the docker hub 
- docker run --rm --platform linux/amd64 rabiaryal/file-sharing-api:latest ls /app -->
-
  
-A modern, production-ready file-sharing platform built with **React**, **Django**, **PostgreSQL**, and **Supabase**. Share PDFs securely with encrypted links, QR codes, and download limits.
+
+ A modern, production-ready file-sharing platform built with **React**, **Django REST Framework**, **Redis**, **Celery**, and **Supabase Storage**. Securely upload, manage, and share PDF files using expiring links, QR codes, and configurable download limits.
+
+#### 🚀 Live Demo
+
+* **Application:** https://share-file.rabiaryal.com.np
 
 
- ####  To test it , go to this link , share-file.rabiaryal.com.np
 ## 🌟 Key Features
 
 ### 🔐 Security & Authentication
-- **Google OAuth 2.0 Login** - Secure authentication with Google accounts
-- **JWT Tokens** - Stateless authentication with refresh rotation
-- **Private Supabase Bucket** - All files encrypted at rest
-- **Presigned URLs** - 60-second time-limited download links
-- **Rate Limiting** - Protection against abuse (5 requests/min per link)
+
+* **Google OAuth 2.0 Login** - Secure authentication using Google accounts
+* **JWT Authentication** - Access and refresh token-based authentication
+* **Private Supabase Storage** - Files stored securely in a private bucket
+* **Presigned Download URLs** - Time-limited secure file access
+* **Rate Limiting** - Protection against abuse and excessive requests
+* **Access Validation** - Enforces expiration and download restrictions
 
 ### 📤 File Upload & Sharing
-- **Drag-and-Drop Upload** - Intuitive file upload interface
-- **Presigned Upload URLs** - Direct upload to Supabase Storage (no backend overhead)
-- **Shareable Links** - Generate unique, expiring share links
-- **QR Codes** - One-click QR generation for mobile sharing
-- **Social Sharing** - Built-in Twitter, WhatsApp, and Email sharing
+
+* **Drag-and-Drop Upload** - Simple and intuitive file upload experience
+* **Direct-to-Storage Uploads** - Upload files directly to Supabase using presigned URLs
+* **Shareable Links** - Generate unique links for secure file sharing
+* **QR Code Generation** - Instantly create QR codes for mobile access
+* **Social Sharing** - Share files via Email, WhatsApp, and Twitter
+* **Upload Progress Tracking** - Real-time upload status and feedback
 
 ### 📊 Advanced Features
-- **Download Limits** - Set max downloads per link (1-1000)
-- **Link Expiration** - Configurable expiry times (1 hour to 7 days)
-- **Async Processing** - Celery tasks for file compression
-- **Storage Quota** - Per-user 1GB storage limit
-- **API Documentation** - OpenAPI/Swagger UI at `/api/docs/`
 
-## 🏗️ Architecture
+* **Download Limits** - Configure maximum downloads per shared file
+* **Link Expiration** - Set expiration periods from 1 hour to 7 days
+* **Background Processing** - Celery-powered asynchronous task execution
+* **Redis Integration** - Task queue and caching support
+* **Storage Quota Management** - Per-user storage limits and usage tracking
+* **Download Analytics** - Monitor file downloads and usage statistics
 
-### Technology Stack
+### ⚡ Performance & Scalability
 
-| Component | Technology | Version |
-|-----------|-----------|---------|
-| Frontend | React + TypeScript | 18.2 |
-| Build Tool | Vite | 5.0 |
-| Styling | Tailwind CSS | 3.4 |
-| Backend | Django | 5.2 |
-| Database | PostgreSQL | 16 (via Supabase) |
-| Queue | Celery + Redis | 5.6 + 7 |
-| Storage | Supabase Storage | - |
-| Auth | JWT + Google OAuth | - |
+* **Asynchronous Tasks** - Non-blocking background processing with Celery
+* **Cloud Storage Integration** - Scalable file storage using Supabase
+* **Presigned Uploads** - Reduced backend load through direct file uploads
+* **Optimized API Design** - RESTful APIs built with Django REST Framework
+
+
+## 🌟 Problem Occured during this prject and their solutions
+
+* **Backend server Becomes Inactivate after few minutes** - used the github actions to ping the server every five minutes, but it might not work on the free tier.
+
+* **Takes a lots of time to upload the file** -- this is due  the implementation fo compression, as initially it tries to compress 
+
+## 🏗️ System Architecture
+
+
+
 
 ### System Diagram
 
@@ -83,6 +91,19 @@ A modern, production-ready file-sharing platform built with **React**, **Django*
    │ • Cleanup Tasks  │
    └──────────────────┘
 ```
+
+### Technology Stack
+
+| Component | Technology | Version |
+|-----------|-----------|---------|
+| Frontend | React + TypeScript | 18.2 |
+| Build Tool | Vite | 5.0 |
+| Styling | Tailwind CSS | 3.4 |
+| Backend | Django | 5.2 |
+| Database | PostgreSQL | 16 (via Supabase) |
+| Queue | Celery + Redis | 5.6 + 7 |
+| Storage | Supabase Storage | - |
+| Auth | JWT + Google OAuth | - |
 
 ## 🚀 Quick Start
 
@@ -482,14 +503,6 @@ files_sharelink:
   - created_at (DateTimeField)
 ```
 
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit changes (`git commit -m 'Add amazing feature'`)
-4. Push to branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
 ## 📝 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
@@ -517,42 +530,3 @@ For issues and questions:
 
 [⬆ Back to top](#-pdf-sharing-platform)
 
-
-
-/l things to do and learn about the aws
-
-**Practical project using your existing backend:**
-
-**Phase 1 — Deploy your current project on AWS**
-- Move Django from Render → EC2
-- Move PostgreSQL from Supabase → RDS
-- Move file storage from Supabase → S3
-- Put Nginx on EC2 as reverse proxy
-
-**Phase 2 — Add AWS-specific features**
-- Use **SES** for email notifications when file is shared
-- Use **CloudFront** in front of S3 for faster file delivery
-- Use **Lambda** to trigger `self_destruct_task` instead of Celery
-
-**Phase 3 — Monitoring**
-- Set up **CloudWatch** for logs and alerts
-- Replace your MongoDB logging with CloudWatch logs
-
----
-
-**Where to learn for free:**
-
-- **AWS Skill Builder** — free official courses at skillbuilder.aws
-- **freeCodeCamp YouTube** — full AWS courses free
-- **AWS documentation** — actually well written, better than most tutorials
-- **AWS Workshop Studio** — free hands-on labs at workshops.aws
-
----
-
-**What to build on your CV from this:**
-
-- Migrated file sharing platform from Render/Supabase to AWS (EC2, RDS, S3, CloudFront)
-- Implemented serverless file cleanup using AWS Lambda
-- Configured CloudWatch monitoring and alerting
-
-That's stronger than any certificate on a fresher CV.
