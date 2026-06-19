@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import * as tus from 'tus-js-client';
 import { filesAPI } from '../api';
 import { ShareLinkModal } from './ShareLinkModal';
 
@@ -15,6 +16,7 @@ const FileUpload: React.FC = () => {
     const [uploadedFile, setUploadedFile] = useState<UploadedFile | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [expiresInSeconds, setExpiresInSeconds] = useState(3600); // 1 hour default
+    const [uploadProgress, setUploadProgress] = useState(0);
 
     const handleDragOver = (e: React.DragEvent) => {
         e.preventDefault();
@@ -32,6 +34,7 @@ const FileUpload: React.FC = () => {
         }
 
         setIsUploading(true);
+        setUploadProgress(0);
         setError(null);
 
         try {
@@ -40,13 +43,43 @@ const FileUpload: React.FC = () => {
             const uploadUrl = intentRes.data.upload_url;
             const storagePath = intentRes.data.storage_path;
 
-            // Step 2: Upload file to Supabase
-            await fetch(uploadUrl, {
-                method: 'PUT',
-                body: file,
-                headers: {
-                    'Content-Type': 'application/pdf',
-                },
+            const url = new URL(uploadUrl);
+            const endpoint = `${url.protocol}//${url.host}/storage/v1/upload/resumable`;
+            const token = url.searchParams.get('token');
+            if (!token) {
+                throw new Error('Failed to retrieve upload token from signed URL');
+            }
+            const pathParts = url.pathname.split('/');
+            const bucketName = pathParts[6] || 'pdfs';
+
+            // Step 2: Upload file to Supabase via TUS resumable protocol
+            await new Promise<void>((resolve, reject) => {
+                const upload = new tus.Upload(file, {
+                    endpoint,
+                    retryDelays: [0, 1000, 3000, 5000],
+                    headers: {
+                        'x-signature': token,
+                    },
+                    metadata: {
+                        bucketName,
+                        objectName: storagePath,
+                        contentType: file.type || 'application/pdf',
+                    },
+                    chunkSize: 6 * 1024 * 1024,
+                    uploadDataDuringCreation: true,
+                    removeFingerprintOnSuccess: true,
+                    onError: (error) => {
+                        reject(error);
+                    },
+                    onProgress: (bytesUploaded, bytesTotal) => {
+                        const percentage = (bytesUploaded / bytesTotal) * 100;
+                        setUploadProgress(percentage);
+                    },
+                    onSuccess: () => {
+                        resolve();
+                    },
+                });
+                upload.start();
             });
 
             // Step 3: Process file on backend
@@ -129,9 +162,24 @@ const FileUpload: React.FC = () => {
                         } ${isUploading ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
                     {isUploading ? (
-                        <div>
-                            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-3"></div>
-                            <p className="text-gray-600">Uploading your PDF...</p>
+                        <div className="w-full max-w-md mx-auto py-4">
+                            <div className="flex justify-between items-center mb-2">
+                                <span className="text-sm font-semibold text-blue-600">
+                                    Uploading PDF...
+                                </span>
+                                <span className="text-sm font-bold text-blue-600">
+                                    {Math.round(uploadProgress)}%
+                                </span>
+                            </div>
+                            <div className="w-full bg-blue-100 rounded-full h-3 overflow-hidden shadow-inner">
+                                <div
+                                    className="bg-blue-500 h-full rounded-full transition-all duration-300 ease-out"
+                                    style={{ width: `${uploadProgress}%` }}
+                                ></div>
+                            </div>
+                            <p className="text-xs text-gray-500 mt-2">
+                                Resumable upload in progress. Do not close this window.
+                            </p>
                         </div>
                     ) : (
                         <>

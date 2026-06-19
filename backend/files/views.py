@@ -23,8 +23,7 @@ class PublicLinkBurstThrottle(AnonRateThrottle):
 
 
 def _resolve_active_path(pdf: CompressedPDF) -> str:
-    if pdf.status == "COMPLETED" and pdf.compressed_size:
-        return pdf.storage_path.replace("raw/", "compressed/")
+    # Compression is deactivated; always serve the original file.
     return pdf.storage_path
 
 class UploadIntentView(APIView):
