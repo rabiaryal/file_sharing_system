@@ -194,6 +194,13 @@ if CELERY_BROKER_URL.startswith("rediss://"):
     CELERY_REDIS_BACKEND_USE_SSL = {
         "ssl_cert_reqs": None
     }
+
+CELERY_BEAT_SCHEDULE = {
+    "cleanup-expired-links-and-users-every-hour": {
+        "task": "files.tasks.cleanup_expired_links_and_users",
+        "schedule": 3600.0,  # Every hour
+    },
+}
 # =====================================================================
 # CACHE
 # =====================================================================

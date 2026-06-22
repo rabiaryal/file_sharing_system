@@ -4,7 +4,7 @@ services:
     restart: unless-stopped
     env_file:
       - .env
-    command: sh -c "python manage.py migrate --noinput && gunicorn core.wsgi:application --bind 0.0.0.0:8000 --workers 2 --threads 2 --timeout 120"
+    command: sh -c "python manage.py migrate --noinput && exec /usr/bin/supervisord -c /etc/supervisor/conf.d/supervisord.conf"
     ports:
       - "8000:8000"
     depends_on:
